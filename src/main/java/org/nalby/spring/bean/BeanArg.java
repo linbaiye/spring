@@ -5,7 +5,6 @@ import org.nalby.spring.util.Assert;
 
 /**
  * An argument for a bean constructor or a bean setter method.
- * @author lintao
  */
 
 public class BeanArg {
@@ -27,5 +26,13 @@ public class BeanArg {
 
 	public BeanArgType getType() {
 		return type;
+	}
+	
+	/**
+	 * Test if this argument is a reference to another bean.
+	 * @return true if so, false if not.
+	 */
+	public boolean isReference() {
+		return this.type == BeanArgType.REFERENCE;
 	}
 }

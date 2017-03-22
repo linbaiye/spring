@@ -11,7 +11,7 @@ public class Assert {
 	
 	
 	/**
-	 * Tests if the object argument is null, throws a {@code NullPointerException} instantiated with the message argument if true.
+	 * Test if the object argument is null, throws a {@code NullPointerException} instantiated with the message argument if true.
 	 * @param object the object to be validated.
 	 * @param message the message for the exception.
 	 * @throws NullPointerException if object is null.
@@ -29,7 +29,7 @@ public class Assert {
 	}
 	
 	/**
-	 * Tests if a string is null or empty, throws a {@code IllegalArgumentException} if true.
+	 * Test if a string is null or empty, throws a {@code IllegalArgumentException} if true.
 	 * 
 	 * @param text the text to be validated.
 	 * @throws IllegalArgumentException if text is null or text is empty.

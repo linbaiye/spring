@@ -1,36 +1,106 @@
 package org.nalby.spring.bean;
 
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+
 
 import org.nalby.spring.util.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 public class XmlBeansHandler {
 	
-	private String xmlFilepath;
+	private Map<String, XmlBeanDefinition> createdBeans;
 	
-	private Map<String, Object> beans;
+	/* Beans wait to create. */
+	private Map<String, XmlBeanDefinition> pendingBeans;
+	
+	private Document document;
 
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 	
-	public XmlBeansHandler(String xmlFilepath) {
-		Assert.notNull(xmlFilepath, "XML filepath can not be null.");
-		this.xmlFilepath = xmlFilepath;
-		this.beans = new ConcurrentHashMap<String, Object>();
+	public static final String BEAN_ELEMENT = "bean";
+	
+
+	public XmlBeansHandler(Document document) {
+		Assert.notNull(document, "Document can not be null.");
+		this.document = document;
+		this.pendingBeans = new HashMap<String, XmlBeanDefinition>();
+		this.createdBeans = new HashMap<String, XmlBeanDefinition>();
 	}
 	
-	private void parseBeansRelations() {
-		
+	/*
+	 * Find all bean definitions in this.document and mark them as pending, throws an
+	 * InvalidBeanConfigException if duplicated beans are found.
+	 */
+	private void scanBeanDefinitionsInDocument() {
+		Element root = this.document.getDocumentElement();
+		NodeList nodeList = root.getChildNodes();
+		for (int i = 0; i < nodeList.getLength(); i++) {
+			Node node = nodeList.item(i);
+			if (node.getNodeType() == Node.ELEMENT_NODE && BEAN_ELEMENT.equalsIgnoreCase(node.getNodeName())) {
+				XmlBeanDefinition beanDefinition = new XmlBeanDefinition((Element)node);
+				if (this.pendingBeans.containsKey(beanDefinition.getId())) {
+					throw new InvalidBeanConfigException("Duplcated bean name found: " + beanDefinition.getId());
+				}
+				this.pendingBeans.put(beanDefinition.getId(), beanDefinition);
+			}
+		}
 	}
 
+	private void notifyBeansCreation(List<XmlBeanDefinition> createdBeans) {
+		for (XmlBeanDefinition beanDefinition: createdBeans) {
+			for (XmlBeanDefinition pendingBean: this.pendingBeans.values()) {
+				pendingBean.onExternalBeanCreated(beanDefinition);
+			}
+			this.createdBeans.put(beanDefinition.getId(), beanDefinition);
+		}
+	}
 	
+	private void initBeans() {
+		boolean hasBeanCreated = false;
+		List<XmlBeanDefinition> createdBeans = new LinkedList<XmlBeanDefinition>();
+		do {
+			hasBeanCreated = false;
+			Iterator<Map.Entry<String, XmlBeanDefinition>> iterator = this.pendingBeans.entrySet().iterator();
+			while (iterator.hasNext()) {
+				Map.Entry<String, XmlBeanDefinition> entry = iterator.next();
+				XmlBeanDefinition beanDefinition = entry.getValue();
+				if (!beanDefinition.hasDependency()) {
+					createdBeans.add(beanDefinition);
+					iterator.remove();
+					hasBeanCreated = true;
+				}
+			}
+			if (hasBeanCreated) {
+				notifyBeansCreation(createdBeans);
+				createdBeans.clear();
+			}
+		} while(hasBeanCreated);
+		if (!this.pendingBeans.isEmpty()) {
+			throw new InvalidBeanConfigException("Not all beans could be created due to unresolved dependencies.");
+		}
+	}
+
+
 	/**
-	 * Resolves relations among bean definitions and creates them accordingly.
+	 * Resolve relations among bean definitions and creates them accordingly.
 	 */
 	public void createBeans() {
-		
+		try {
+			scanBeanDefinitionsInDocument();
+			initBeans();
+		} catch (Exception e) {
+			logger.error("Failed to create beans:", e);
+			throw new InvalidBeanConfigException(e);
+		} 
 	}
 
 }

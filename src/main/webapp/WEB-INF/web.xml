@@ -4,4 +4,16 @@
 
 <web-app>
   <display-name>Archetype Created Web Application</display-name>
+  <servlet>
+  	<servlet-name>dispatchServlet</servlet-name>
+  	<servlet-class>org.nalby.spring.mvc.DispatchServlet</servlet-class>
+  	<init-param>
+  		<param-name>contextConfigLocation</param-name>
+  		<param-value>classpath:spring/servlet.xml</param-value>
+  	</init-param>
+  </servlet>
+  <servlet-mapping>
+  	<servlet-name>dispatchServlet</servlet-name>
+  	<url-pattern>/*</url-pattern>
+  </servlet-mapping>
 </web-app>
