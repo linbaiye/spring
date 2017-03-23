@@ -4,6 +4,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.security.spec.ECField;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -24,6 +25,19 @@ public class XmlBeanDefinitionTest {
 			return this.valueSet;
 		}
 	}
+	
+	public static abstract class AbsctractClass {
+	}
+	
+	public static interface Interface {
+	}
+	
+	public static @interface Annotation {
+	}
+	
+	public static enum Enum {
+	}
+
 
 	public static class TargetClass extends DefaultConstructorClass{
 		public TargetClass() {
@@ -31,6 +45,12 @@ public class XmlBeanDefinitionTest {
 		}
 		public TargetClass(boolean b) {
 			this.valueSet = b;
+		}
+	}
+	
+	public static class NoArgConstructorClass extends DefaultConstructorClass {
+		public NoArgConstructorClass() {
+			this.valueSet = true;
 		}
 	}
 
@@ -164,6 +184,19 @@ public class XmlBeanDefinitionTest {
 		new XmlBeanDefinition(item).parseBeanDefinition();
 	}
 	
+	@Test
+	public void testWithAbstractClass() throws ParserConfigurationException {
+		Element item = newElementWithId();
+		item.setAttribute("class", AbsctractClass.class.getName());
+		assertThrowInvalidConfigException(item);
+		item.setAttribute("class", Interface.class.getName());
+		assertThrowInvalidConfigException(item);
+		item.setAttribute("class", Annotation.class.getName());
+		assertThrowInvalidConfigException(item);
+		item.setAttribute("class", Enum.class.getName());
+		assertThrowInvalidConfigException(item);
+	}
+	
 	/*
 	 * Make sure a bean can be created if no explicit constructors defined.
 	 */
@@ -188,6 +221,12 @@ public class XmlBeanDefinitionTest {
 		assertTrue(object instanceof TargetClass);
 		TargetClass instance = (TargetClass) object;
 		assertFalse(instance.isValueSet());
+
+		xmlBeanDefinition = new XmlBeanDefinition(newElementWithIdAndClass(NoArgConstructorClass.class));
+		xmlBeanDefinition.parseBeanDefinition();
+		object = xmlBeanDefinition.getBean();
+		NoArgConstructorClass bean = (NoArgConstructorClass) object;
+		assertTrue(bean.isValueSet());
 	}
 
 
@@ -242,7 +281,6 @@ public class XmlBeanDefinitionTest {
 		XmlBeanDefinition targetBeanDefinition = new XmlBeanDefinition(newElmentWithConstructorArgs(TwoArgClass.class, args));
 		targetBeanDefinition.parseBeanDefinition();
 		assertTrue(targetBeanDefinition.hasDependency());
-
 
 		XmlBeanDefinition dependingDefinition = new XmlBeanDefinition(newElementWithIdAndClass("referredBean", DefaultConstructorClass.class));
 		dependingDefinition.parseBeanDefinition();

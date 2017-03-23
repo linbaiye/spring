@@ -2,6 +2,7 @@ package org.nalby.spring.bean;
 
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -203,13 +204,16 @@ public class XmlBeanDefinition {
 		if (this.bean != null) {
 			return this.bean;
 		}
+		if (this.id == null || this.clazz == null) {
+			throw new InvalidBeanConfigException("Bean definition is not parsed.");
+		}
 		this.bean = createBean();
 		return this.bean;
 	}
 	
 	/**
 	 * Parse the bean element in order to resolve dependent beans/values.
-	 * @throws InvalidBeanConfigException if the bean element is mis-configured.
+	 * @throws InvalidBeanConfigException if the bean element is not properly configured.
 	 */
 	public void parseBeanDefinition() {
 		try {
@@ -218,6 +222,10 @@ public class XmlBeanDefinition {
 			Assert.textMatchsRegex(this.id, "[a-zA-Z][0-9a-zA-Z]+");
 			String className = this.element.getAttribute("class");
 			this.clazz = Class.forName(className);
+			if (this.clazz.isInterface() || this.clazz.isAnnotation() ||
+				this.clazz.isEnum() || Modifier.isAbstract(this.clazz.getModifiers())) {
+				throw new InvalidBeanConfigException("Not an instantiable class.");
+			}
 			parseDependecies();
 		} catch (ClassNotFoundException e) {
 			throw new InvalidBeanConfigException("Invalid bean class");
