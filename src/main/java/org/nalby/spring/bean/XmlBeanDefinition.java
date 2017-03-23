@@ -2,6 +2,7 @@ package org.nalby.spring.bean;
 
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -17,10 +18,11 @@ import org.w3c.dom.NodeList;
 /**
  * Class to describe a bean including id, class, and dependent beans or values.
  * Currently it can only create a singleton bean and is not thread-safe.
- * <p>
  */
 public class XmlBeanDefinition {
-	/** Constructor argument element, used to describe constructor argument. */
+	/**
+	 * Constructor argument element, used to describe constructor argument.
+	 */
 	public static final String CONSTRUCTOR_ARG_ELEMENT = "constructor-arg";
 	/**
 	 * Bean property element, used to describe what setters should be invoked.
@@ -84,13 +86,20 @@ public class XmlBeanDefinition {
 	private void parseConstructorArg(Element e) {
 		String index = e.getAttribute("index");
 		Assert.notEmptyText(index, "index can not be null");
-		constructorArgs.put(Integer.parseInt(index), parseBeanArg(e));
+		Integer indexedKey = Integer.parseInt(index);
+		if (this.constructorArgs.containsKey(indexedKey)) {
+			throw new InvalidBeanConfigException("Duplicated index.");
+		}
+		this.constructorArgs.put(indexedKey, parseBeanArg(e));
 	}
 
 	private void parsePropertyArg(Element e) {
 		String name = e.getAttribute("name");
 		Assert.notEmptyText(name, "name for property can not be null");
-		properties.put(name, parseBeanArg(e));
+		if (this.properties.containsKey(name)) {
+			throw new InvalidBeanConfigException("Duplicated property names.");
+		}
+		this.properties.put(name, parseBeanArg(e));
 	}
 
 	/*
@@ -115,13 +124,12 @@ public class XmlBeanDefinition {
 	 * be eliminated.
 	 */
 	public void onExternalBeanCreated(XmlBeanDefinition beanDefinition) {
-		dependentBeanNames.remove(beanDefinition.getId());
-		dependentBeans.put(beanDefinition.getId(), beanDefinition);
+		while (this.dependentBeanNames.remove(beanDefinition.getId()));
+		this.dependentBeans.put(beanDefinition.getId(), beanDefinition);
 	}
 
 	/**
 	 * Test if this bean depends on other beans.
-	 * 
 	 * @return true if so.
 	 */
 	public boolean hasDependency() {
@@ -186,7 +194,6 @@ public class XmlBeanDefinition {
 
 	/**
 	 * Instantiate the bean.
-	 * 
 	 * @throws UnresolvedBeanDependencyException if bean has unresolved dependencies.
 	 */
 	public Object getBean() {
@@ -197,25 +204,34 @@ public class XmlBeanDefinition {
 		if (this.bean != null) {
 			return this.bean;
 		}
+		if (this.id == null || this.clazz == null) {
+			throw new InvalidBeanConfigException("Bean definition is not parsed.");
+		}
 		this.bean = createBean();
 		return this.bean;
 	}
-
+	
 	/**
 	 * Parse the bean element in order to resolve dependent beans/values.
-	 * 
-	 * @throws InvalidBeanConfigException if the bean element is mis-configured.
+	 * @throws InvalidBeanConfigException if the bean element is not properly configured.
 	 */
 	public void parseBeanDefinition() {
 		try {
 			this.id = this.element.getAttribute("id");
 			Assert.notEmptyText(this.id, "bean id can not be null");
+			Assert.textMatchsRegex(this.id, "[a-zA-Z][0-9a-zA-Z]+");
 			String className = this.element.getAttribute("class");
 			this.clazz = Class.forName(className);
+			if (this.clazz.isInterface() || this.clazz.isAnnotation() ||
+				this.clazz.isEnum() || Modifier.isAbstract(this.clazz.getModifiers())) {
+				throw new InvalidBeanConfigException("Not an instantiable class.");
+			}
 			parseDependecies();
 		} catch (ClassNotFoundException e) {
 			throw new InvalidBeanConfigException("Invalid bean class");
-		} catch (Exception e) {
+		} catch (UnresolvedBeanDependencyException e) {
+			throw e;
+		}catch (Exception e) {
 			throw new InvalidBeanConfigException(e);
 		}
 	}
