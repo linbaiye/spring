@@ -17,10 +17,11 @@ import org.w3c.dom.NodeList;
 /**
  * Class to describe a bean including id, class, and dependent beans or values.
  * Currently it can only create a singleton bean and is not thread-safe.
- * <p>
  */
 public class XmlBeanDefinition {
-	/** Constructor argument element, used to describe constructor argument. */
+	/**
+	 * Constructor argument element, used to describe constructor argument.
+	 */
 	public static final String CONSTRUCTOR_ARG_ELEMENT = "constructor-arg";
 	/**
 	 * Bean property element, used to describe what setters should be invoked.
@@ -192,7 +193,6 @@ public class XmlBeanDefinition {
 
 	/**
 	 * Instantiate the bean.
-	 * 
 	 * @throws UnresolvedBeanDependencyException if bean has unresolved dependencies.
 	 */
 	public Object getBean() {
@@ -209,7 +209,6 @@ public class XmlBeanDefinition {
 	
 	/**
 	 * Parse the bean element in order to resolve dependent beans/values.
-	 * 
 	 * @throws InvalidBeanConfigException if the bean element is mis-configured.
 	 */
 	public void parseBeanDefinition() {
