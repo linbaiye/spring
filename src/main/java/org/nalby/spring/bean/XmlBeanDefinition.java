@@ -84,13 +84,20 @@ public class XmlBeanDefinition {
 	private void parseConstructorArg(Element e) {
 		String index = e.getAttribute("index");
 		Assert.notEmptyText(index, "index can not be null");
-		constructorArgs.put(Integer.parseInt(index), parseBeanArg(e));
+		Integer indexedKey = Integer.parseInt(index);
+		if (this.constructorArgs.containsKey(indexedKey)) {
+			throw new InvalidBeanConfigException("Duplicated index.");
+		}
+		this.constructorArgs.put(indexedKey, parseBeanArg(e));
 	}
 
 	private void parsePropertyArg(Element e) {
 		String name = e.getAttribute("name");
 		Assert.notEmptyText(name, "name for property can not be null");
-		properties.put(name, parseBeanArg(e));
+		if (this.properties.containsKey(name)) {
+			throw new InvalidBeanConfigException("Duplicated property names.");
+		}
+		this.properties.put(name, parseBeanArg(e));
 	}
 
 	/*
@@ -115,13 +122,12 @@ public class XmlBeanDefinition {
 	 * be eliminated.
 	 */
 	public void onExternalBeanCreated(XmlBeanDefinition beanDefinition) {
-		dependentBeanNames.remove(beanDefinition.getId());
-		dependentBeans.put(beanDefinition.getId(), beanDefinition);
+		while (this.dependentBeanNames.remove(beanDefinition.getId()));
+		this.dependentBeans.put(beanDefinition.getId(), beanDefinition);
 	}
 
 	/**
 	 * Test if this bean depends on other beans.
-	 * 
 	 * @return true if so.
 	 */
 	public boolean hasDependency() {
@@ -200,7 +206,7 @@ public class XmlBeanDefinition {
 		this.bean = createBean();
 		return this.bean;
 	}
-
+	
 	/**
 	 * Parse the bean element in order to resolve dependent beans/values.
 	 * 
@@ -210,12 +216,15 @@ public class XmlBeanDefinition {
 		try {
 			this.id = this.element.getAttribute("id");
 			Assert.notEmptyText(this.id, "bean id can not be null");
+			Assert.textMatchsRegex(this.id, "[a-zA-Z][0-9a-zA-Z]+");
 			String className = this.element.getAttribute("class");
 			this.clazz = Class.forName(className);
 			parseDependecies();
 		} catch (ClassNotFoundException e) {
 			throw new InvalidBeanConfigException("Invalid bean class");
-		} catch (Exception e) {
+		} catch (UnresolvedBeanDependencyException e) {
+			throw e;
+		}catch (Exception e) {
 			throw new InvalidBeanConfigException(e);
 		}
 	}
