@@ -153,6 +153,7 @@ public class XmlBeanDefinition {
 			return arg.getValue();
 		}
 		if (!primitiveTypeConverter.containsKey(nthArgType)) {
+			logger.info("nthArgType:{}.", nthArgType.getName());
 			throw new InvalidBeanConfigException(n + "th constructor argument is not recognised.");
 		}
 		Class<?> nthArgClass = primitiveTypeConverter.get(nthArgType);
