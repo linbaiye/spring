@@ -153,7 +153,7 @@ public class XmlBeanDefinition {
 			return arg.getValue();
 		}
 		if (!primitiveTypeConverter.containsKey(nthArgType)) {
-			throw new InvalidBeanConfigException(n + "th constructor argument is not recognised.");
+			throw new InvalidBeanConfigException(n + "th constructor argument is not recognised:" + nthArgType.getSimpleName());
 		}
 		Class<?> nthArgClass = primitiveTypeConverter.get(nthArgType);
 		Constructor<?> argConstructor = nthArgClass.getConstructor(String.class);
@@ -172,16 +172,16 @@ public class XmlBeanDefinition {
 				if (constructorParamTypes.length != this.constructorArgs.size()) {
 					continue;
 				}
-				Object[] params = new Object[constructorParamTypes.length];
-				for (int i = 0; i < constructorParamTypes.length; i++) {
-					params[i] = getNthConstructorArg(i, constructorParamTypes[i]);
-				}
 				try {
+					Object[] params = new Object[constructorParamTypes.length];
+					for (int i = 0; i < constructorParamTypes.length; i++) {
+						params[i] = getNthConstructorArg(i, constructorParamTypes[i]);
+					}
 					this.bean = beanConstructor.newInstance(params);
 					if (this.bean != null) {
 						return this.bean;
 					}
-				} catch (Exception e) {
+				} catch (Throwable e) {
 					// Ignore it since constructors may be overload with arguments of the same number.
 				}
 			}
