@@ -217,6 +217,9 @@ public class XmlBeanDefinition {
 	 */
 	public void parseBeanDefinition() {
 		try {
+			if (this.id != null) {
+				return;
+			}
 			this.id = this.element.getAttribute("id");
 			Assert.notEmptyText(this.id, "bean id can not be null");
 			Assert.textMatchsRegex(this.id, "[a-zA-Z][0-9a-zA-Z]+");

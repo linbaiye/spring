@@ -15,6 +15,10 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+/**
+ * Mainly to scan a document(xml file) and create beans defined inside the file.
+ *
+ */
 public class XmlBeansHandler {
 	
 	private Map<String, XmlBeanDefinition> createdBeans;
@@ -47,6 +51,7 @@ public class XmlBeansHandler {
 			Node node = nodeList.item(i);
 			if (node.getNodeType() == Node.ELEMENT_NODE && BEAN_ELEMENT.equalsIgnoreCase(node.getNodeName())) {
 				XmlBeanDefinition beanDefinition = new XmlBeanDefinition((Element)node);
+				beanDefinition.parseBeanDefinition();
 				if (this.pendingBeans.containsKey(beanDefinition.getId())) {
 					throw new InvalidBeanConfigException("Duplcated bean name found: " + beanDefinition.getId());
 				}
@@ -55,6 +60,9 @@ public class XmlBeansHandler {
 		}
 	}
 
+	/*
+	 * Notify all depending beans of the creation of dependent beans.
+	 */
 	private void notifyBeansCreation(List<XmlBeanDefinition> createdBeans) {
 		for (XmlBeanDefinition beanDefinition: createdBeans) {
 			for (XmlBeanDefinition pendingBean: this.pendingBeans.values()) {
@@ -91,7 +99,7 @@ public class XmlBeansHandler {
 
 
 	/**
-	 * Resolve relations among bean definitions and creates them accordingly.
+	 * Resolve relations among bean definitions and create beans accordingly.
 	 */
 	public void createBeans() {
 		try {
@@ -101,6 +109,21 @@ public class XmlBeansHandler {
 			logger.error("Failed to create beans:", e);
 			throw new InvalidBeanConfigException(e);
 		} 
+	}
+	
+	/**
+	 * Get the bean by bean id.
+	 * @param id the bean id.
+	 * @return null if the bean id does not exist, the bean otherwise.
+	 * @throws IllegalArgumentException if the id passed is empty.
+	 */
+	public Object getBean(String id) {
+		Assert.notEmptyText(id, "Bean name can not be empty.");
+		if (!this.createdBeans.containsKey(id)) {
+			return null;
+		}
+		XmlBeanDefinition beanDefinition = this.createdBeans.get(id);
+		return beanDefinition.getBean();
 	}
 
 }
