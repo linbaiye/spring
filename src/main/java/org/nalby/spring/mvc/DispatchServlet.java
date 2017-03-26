@@ -33,7 +33,7 @@ public class DispatchServlet extends HttpServlet {
 		String configPath = config.getInitParameter("contextConfigLocation");
 		Assert.notNull(configPath, "configure file path can't not be null.");
 		configPath = configPath.replace("classpath:", "WEB-INF/classes/");
-		logger.info(getServletContext().getRealPath(configPath));
+		logger.info("loading config file from:{}.", getServletContext().getRealPath(configPath));
 		try {
 			File fXmlFile = new File(getServletContext().getRealPath(configPath));
 			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
