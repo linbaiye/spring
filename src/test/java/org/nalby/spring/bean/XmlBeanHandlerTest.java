@@ -84,7 +84,6 @@ public class XmlBeanHandlerTest {
 		bean = createBeanElement("bean2", Class1.class.getName(), document);
 		beans.appendChild(bean);
 		document.appendChild(beans);
-		displayDocument(document);
 		try {
 			XmlBeansHandler handler = new XmlBeansHandler(document);
 			handler.createBeans();
