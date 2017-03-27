@@ -4,7 +4,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.security.spec.ECField;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -146,8 +145,7 @@ public class XmlBeanDefinitionTest {
 	
 	private void assertThrowInvalidConfigException(Element element) {
 		try {
-			XmlBeanDefinition xmlBeanDefinition = new XmlBeanDefinition(element);
-			xmlBeanDefinition.parseBeanDefinition();
+			XmlBeanDefinition.parseXmlBeanElement(element);
 			fail("An InvalidBeanConfigException should be thrown.");
 		} catch (InvalidBeanConfigException e) {
 			/* Expected. */
@@ -157,7 +155,7 @@ public class XmlBeanDefinitionTest {
 	
 	@Test(expected = NullPointerException.class)
 	public void testWithNullElement() {
-		new XmlBeanDefinition(null);
+		XmlBeanDefinition.parseXmlBeanElement(null);
 	}
 	
 	@Test
@@ -181,7 +179,7 @@ public class XmlBeanDefinitionTest {
 	public void testWithValidClass() throws ParserConfigurationException {
 		Element item = newElementWithId();
 		item.setAttribute("class", getClass().getName());
-		new XmlBeanDefinition(item).parseBeanDefinition();
+		XmlBeanDefinition.parseXmlBeanElement(item);
 	}
 	
 	@Test
@@ -202,8 +200,7 @@ public class XmlBeanDefinitionTest {
 	 */
 	@Test
 	public void testWithDefaultConstructor() throws ParserConfigurationException {
-		XmlBeanDefinition xmlBeanDefinition = new XmlBeanDefinition(newElementWithIdAndClass(DefaultConstructorClass.class));
-		xmlBeanDefinition.parseBeanDefinition();
+		XmlBeanDefinition xmlBeanDefinition = XmlBeanDefinition.parseXmlBeanElement(newElementWithIdAndClass(DefaultConstructorClass.class));
 		Object object = xmlBeanDefinition.getBean();
 		assertTrue(object instanceof DefaultConstructorClass);
 		DefaultConstructorClass instance = (DefaultConstructorClass) object;
@@ -215,15 +212,13 @@ public class XmlBeanDefinitionTest {
 	 */
 	@Test
 	public void testWithNoArgConstructor() throws ParserConfigurationException {
-		XmlBeanDefinition xmlBeanDefinition = new XmlBeanDefinition(newElementWithIdAndClass(TargetClass.class));
-		xmlBeanDefinition.parseBeanDefinition();
+		XmlBeanDefinition xmlBeanDefinition = XmlBeanDefinition.parseXmlBeanElement(newElementWithIdAndClass(TargetClass.class));
 		Object object = xmlBeanDefinition.getBean();
 		assertTrue(object instanceof TargetClass);
 		TargetClass instance = (TargetClass) object;
 		assertFalse(instance.isValueSet());
 
-		xmlBeanDefinition = new XmlBeanDefinition(newElementWithIdAndClass(NoArgConstructorClass.class));
-		xmlBeanDefinition.parseBeanDefinition();
+		xmlBeanDefinition = XmlBeanDefinition.parseXmlBeanElement(newElementWithIdAndClass(NoArgConstructorClass.class));
 		object = xmlBeanDefinition.getBean();
 		NoArgConstructorClass bean = (NoArgConstructorClass) object;
 		assertTrue(bean.isValueSet());
@@ -237,8 +232,7 @@ public class XmlBeanDefinitionTest {
 	public void testWithArgedConstructor() throws ParserConfigurationException {
 		List<Map<String, String>> args = new LinkedList<Map<String,String>>();
 		args.add(newConstructorArg("0", "value", "true"));
-		XmlBeanDefinition xmlBeanDefinition = new XmlBeanDefinition(newElmentWithConstructorArgs(TargetClass.class, args));
-		xmlBeanDefinition.parseBeanDefinition();
+		BeanDefinition xmlBeanDefinition = XmlBeanDefinition.parseXmlBeanElement(newElmentWithConstructorArgs(TargetClass.class, args));
 		Object object = xmlBeanDefinition.getBean();
 		assertTrue(object instanceof TargetClass);
 		TargetClass instance = (TargetClass) object;
@@ -247,8 +241,7 @@ public class XmlBeanDefinitionTest {
 		args.clear();
 		args.add(newConstructorArg("0", "value", "true"));
 		args.add(newConstructorArg("1", "value", "Hello"));
-		xmlBeanDefinition = new XmlBeanDefinition(newElmentWithConstructorArgs(TwoArgClass.class, args));
-		xmlBeanDefinition.parseBeanDefinition();
+		xmlBeanDefinition = XmlBeanDefinition.parseXmlBeanElement(newElmentWithConstructorArgs(TwoArgClass.class, args));
 		TwoArgClass twoArgClass = (TwoArgClass) xmlBeanDefinition.getBean();
 		assertTrue("Hello".equals(twoArgClass.getStr()));
 		assertTrue(twoArgClass.isValueSet());
@@ -267,8 +260,7 @@ public class XmlBeanDefinitionTest {
 	public void testUnsolvedArg() throws ParserConfigurationException {
 		List<Map<String, String>> args = new LinkedList<Map<String,String>>();
 		args.add(newConstructorArg("0", "ref", "refBean"));
-		XmlBeanDefinition xmlBeanDefinition = new XmlBeanDefinition(newElmentWithConstructorArgs(TargetClass.class, args));
-		xmlBeanDefinition.parseBeanDefinition();
+		XmlBeanDefinition xmlBeanDefinition = XmlBeanDefinition.parseXmlBeanElement(newElmentWithConstructorArgs(TargetClass.class, args));
 		xmlBeanDefinition.getBean();
 	}
 	
@@ -278,13 +270,11 @@ public class XmlBeanDefinitionTest {
 		args.add(newConstructorArg("0", "value", "true"));
 		args.add(newConstructorArg("1", "ref", "referredBean"));
 		//The bean we want to create.
-		XmlBeanDefinition targetBeanDefinition = new XmlBeanDefinition(newElmentWithConstructorArgs(TwoArgClass.class, args));
-		targetBeanDefinition.parseBeanDefinition();
-		assertTrue(targetBeanDefinition.hasDependency());
+		XmlBeanDefinition targetBeanDefinition = XmlBeanDefinition.parseXmlBeanElement(newElmentWithConstructorArgs(TwoArgClass.class, args));
+		assertTrue(targetBeanDefinition.hasUnresolvedDependency());
 
-		XmlBeanDefinition dependingDefinition = new XmlBeanDefinition(newElementWithIdAndClass("referredBean", DefaultConstructorClass.class));
-		dependingDefinition.parseBeanDefinition();
-		targetBeanDefinition.onExternalBeanCreated(dependingDefinition);
+		XmlBeanDefinition dependingDefinition = XmlBeanDefinition.parseXmlBeanElement(newElementWithIdAndClass("referredBean", DefaultConstructorClass.class));
+		targetBeanDefinition.onOtherBeanCreated(dependingDefinition);
 		TwoArgClass targetBean = (TwoArgClass) targetBeanDefinition.getBean();
 		assertTrue(targetBean.isValueSet());
 		assertTrue(targetBean.getClz() == dependingDefinition.getBean());
