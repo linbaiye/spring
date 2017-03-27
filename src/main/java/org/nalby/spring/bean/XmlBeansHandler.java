@@ -50,8 +50,7 @@ public class XmlBeansHandler {
 		for (int i = 0; i < nodeList.getLength(); i++) {
 			Node node = nodeList.item(i);
 			if (node.getNodeType() == Node.ELEMENT_NODE && BEAN_ELEMENT.equalsIgnoreCase(node.getNodeName())) {
-				XmlBeanDefinition beanDefinition = new XmlBeanDefinition((Element)node);
-				beanDefinition.parseBeanDefinition();
+				XmlBeanDefinition beanDefinition = XmlBeanDefinition.parseXmlBeanElement((Element)node);
 				if (this.pendingBeans.containsKey(beanDefinition.getId())) {
 					throw new InvalidBeanConfigException("Duplcated bean name found: " + beanDefinition.getId());
 				}
@@ -66,7 +65,7 @@ public class XmlBeansHandler {
 	private void notifyBeansCreation(List<XmlBeanDefinition> createdBeans) {
 		for (XmlBeanDefinition beanDefinition: createdBeans) {
 			for (XmlBeanDefinition pendingBean: this.pendingBeans.values()) {
-				pendingBean.onExternalBeanCreated(beanDefinition);
+				pendingBean.onOtherBeanCreated(beanDefinition);
 			}
 			this.createdBeans.put(beanDefinition.getId(), beanDefinition);
 		}
@@ -81,7 +80,7 @@ public class XmlBeansHandler {
 			while (iterator.hasNext()) {
 				Map.Entry<String, XmlBeanDefinition> entry = iterator.next();
 				XmlBeanDefinition beanDefinition = entry.getValue();
-				if (!beanDefinition.hasDependency()) {
+				if (!beanDefinition.hasUnresolvedDependency()) {
 					createdBeans.add(beanDefinition);
 					iterator.remove();
 					hasBeanCreated = true;
