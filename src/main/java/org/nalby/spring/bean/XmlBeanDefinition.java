@@ -2,9 +2,10 @@ package org.nalby.spring.bean;
 
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,7 @@ public class XmlBeanDefinition implements BeanDefinition {
 	
 	// bean id
 	private String id = null;
+
 	private Class<?> clazz = null;
 	private Map<String, BeanArg> propertyArgs;
 	
@@ -75,33 +77,61 @@ public class XmlBeanDefinition implements BeanDefinition {
 		return id;
 	}
 
+	
+	private Object buildArgmentValue(BeanArg arg, Class<?> argType) throws NoSuchMethodException, SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+		if (arg.isReference()) {
+			if (!this.dependentBeans.containsKey(arg.getValue())) {
+				throw new InvalidBeanConfigException("th argument is configured as a bean-ref, but the refered bean can not be found.");
+			}
+			// The argument refers to another bean.
+			BeanDefinition beanArgDefinition = this.dependentBeans.get(arg.getValue());
+			return beanArgDefinition.getBean();
+		}
+		// The argument refers to a String.
+		if (argType == String.class) {
+			return arg.getValue();
+		}
+		if (!primitiveTypeConverter.containsKey(argType)) {
+			// The argument is neither a bean, nor a string, nor a primitive type.
+			throw new InvalidBeanConfigException("th constructor argument is not recognised:" + argType.getSimpleName());
+		}
+		// The argument refers to a primitive type.
+		Class<?> argClass = primitiveTypeConverter.get(argType);
+		Constructor<?> argConstructor = argClass.getConstructor(String.class);
+		return argConstructor.newInstance(arg.getValue());
+	}
 
 	/*
 	 * Get the nth constructor argument value.
 	 */
 	private Object getNthConstructorArg(int n, Class<?> nthArgType) throws Exception {
 		BeanArg arg = this.ctorArgs.get(String.valueOf(n));
-		if (arg.isReference()) {
-			if (!this.dependentBeans.containsKey(arg.getValue())) {
-				throw new InvalidBeanConfigException(
-						n + "th argument is configured as a bean-ref, but the refered bean can not be found.");
-			}
-			BeanDefinition beanArgDefinition = this.dependentBeans.get(arg.getValue());
-			return beanArgDefinition.getBean();
-		}
-		if (nthArgType == String.class) {
-			return arg.getValue();
-		}
-		if (!primitiveTypeConverter.containsKey(nthArgType)) {
-			// The constructor argument is neither a bean, nor a string, nor a primitive type.
-			throw new InvalidBeanConfigException(n + "th constructor argument is not recognised:" + nthArgType.getSimpleName());
-		}
-		Class<?> nthArgClass = primitiveTypeConverter.get(nthArgType);
-		Constructor<?> argConstructor = nthArgClass.getConstructor(String.class);
-		return argConstructor.newInstance(arg.getValue());
+		return buildArgmentValue(arg, nthArgType);
 	}
 	
-	private Object injectProperties() {
+	
+	private Object injectProperties() throws NoSuchMethodException, SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+		for (Method method : this.clazz.getMethods()) {
+			String methodName = method.getName();
+			if (!methodName.startsWith("set")) {
+				continue;
+			}
+			String property = methodName.replaceFirst("set", "");
+			property = property.substring(0, 1).toLowerCase() + property.substring(1);
+			if (!this.propertyArgs.containsKey(property)) {
+				continue;
+			}
+			Class<?>[] paramTypes = method.getParameterTypes();
+			if (paramTypes.length != 1) {
+				continue;
+			}
+			Object argValue = buildArgmentValue(this.propertyArgs.get(property), paramTypes[0]);
+			method.invoke(this.bean, argValue);
+			this.propertyArgs.remove(property);
+		}
+		for (String property: this.propertyArgs.keySet()) {
+			throw new InvalidBeanConfigException("No setter for property: " + property);
+		}
 		return this.bean;
 	}
 
@@ -134,8 +164,13 @@ public class XmlBeanDefinition implements BeanDefinition {
 			logger.error("Got an expection while creating the bean of " + this.id, e);
 			throw new UnresolvedBeanDependencyException(e.getMessage());
 		}
-		if (this.bean != null) {
-			return injectProperties();
+		try {
+			if (this.bean != null) {
+				return injectProperties();
+			}
+		} catch (Throwable e) {
+			logger.error("Got an exception while injecting properties:", e);
+			throw new InvalidBeanConfigException("The bean can not be created because properties are not properly configured.");
 		}
 		throw new UnresolvedBeanDependencyException("Can not find appropriate constructor.");
 	}
@@ -229,6 +264,21 @@ public class XmlBeanDefinition implements BeanDefinition {
 		return dependentBeanNames;
 	}
 	
+	private static void assertNoOverloadedSetters(Class<?> clazz) {
+		Method[] methods = clazz.getMethods();
+		Map<String, Boolean> setters = new HashMap<String, Boolean>();
+		for (Method method: methods) {
+			String name = method.getName();
+			if (!name.startsWith("set")) {
+				continue;
+			}
+			if (setters.containsKey(name)) {
+				throw new InvalidBeanConfigException("Setter " + name + " is overloaded.");
+			}
+			setters.put(name, true);
+		}
+	}
+	
 	/**
 	 * Parse a <bean> element and return the definition based on the element.
 	 * @param element the <bean> element.
@@ -244,6 +294,7 @@ public class XmlBeanDefinition implements BeanDefinition {
 			}
 			String id = parseId(element);
 			Class<?> clazz = parseClass(element);
+			assertNoOverloadedSetters(clazz);
 			Map<String, BeanArg> ctorArgs = new HashMap<String, BeanArg>();
 			Map<String, BeanArg> propertyArgs = new HashMap<String, BeanArg>();
 			List<String> dependentBeanNames = parseBeanArgs(element, ctorArgs, propertyArgs);
