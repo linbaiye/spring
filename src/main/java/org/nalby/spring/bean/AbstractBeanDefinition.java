@@ -1,5 +1,6 @@
 package org.nalby.spring.bean;
 
+import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +48,14 @@ public abstract class AbstractBeanDefinition implements BeanDefinition {
 
 	public String getId() {
 		return id;
+	}
+	
+	static void assertClassAcceptable(Class<?> clazz) {
+		if (clazz.isArray() || clazz.isInterface() || clazz.isAnnotation()
+			|| clazz.isEnum() || clazz.isPrimitive() || Modifier.isAbstract(clazz.getModifiers())
+			|| Modifier.isPrivate(clazz.getModifiers())) {
+			throw new InvalidBeanConfigException("Bean class is not acceptable.");
+		}
 	}
 
 	abstract Object injectProperties();
