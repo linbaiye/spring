@@ -236,6 +236,12 @@ public class XmlBeanDefinitionTest {
 	}
 	
 	@Test
+	public void testWithArray() throws ParserConfigurationException {
+		assertThrowInvalidConfigException(newElementWithIdAndClass(int[].class));
+		assertThrowInvalidConfigException(newElementWithIdAndClass(String[].class));
+	}
+	
+	@Test
 	public void testWithInvalidClass() throws ParserConfigurationException {
 		Element item = newElementWithId();
 		item.setAttribute("class", "NoClass");
