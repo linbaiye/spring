@@ -144,7 +144,7 @@ public class XmlBeanDefinition extends AbstractBeanDefinition {
 		String className = element.getAttribute("class");
 		Class<?> clazz = Class.forName(className);
 		if (clazz.isInterface() || clazz.isAnnotation() ||
-			clazz.isEnum() || Modifier.isAbstract(clazz.getModifiers())) {
+			clazz.isEnum() || clazz.isArray() || Modifier.isAbstract(clazz.getModifiers())) {
 			throw new InvalidBeanConfigException("Not an instantiable class.");
 		}
 		return clazz;
