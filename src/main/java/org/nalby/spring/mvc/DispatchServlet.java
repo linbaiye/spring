@@ -10,7 +10,6 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
-import org.nalby.spring.annotation.Component;
 import org.nalby.spring.bean.XmlBeansHandler;
 import org.nalby.spring.util.Assert;
 import org.slf4j.Logger;
@@ -18,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 @SuppressWarnings("serial")
-@Component
 public class DispatchServlet extends HttpServlet {
 	
 	private final Logger logger = LoggerFactory.getLogger(getClass());
